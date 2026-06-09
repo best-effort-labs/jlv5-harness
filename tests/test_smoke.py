@@ -3,6 +3,7 @@ Smoke tests — require a physically connected Jumperless V5.
 Run with: pytest -m hardware
 """
 import pytest
+
 from jlv5_harness import Harness, find_ports
 
 

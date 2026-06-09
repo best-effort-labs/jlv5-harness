@@ -21,8 +21,11 @@ Node constants (for reference):
     String aliases ("GND", "TOP_RAIL", "ADC0", etc.) also accepted.
 """
 
+import contextlib
 import json
 import time
+from typing import Any, cast
+
 import serial
 import serial.tools.list_ports
 
@@ -30,8 +33,12 @@ import serial.tools.list_ports
 def find_ports() -> list[str]:
     """Return Jumperless V5 serial ports sorted by device name (port1, port3, port5...)."""
     ports = sorted(
-        [p for p in serial.tools.list_ports.comports()
-         if "JLV5" in (p.name or "") or "JLV5" in (p.description or "") or "Jumperless" in (p.description or "")],
+        (
+            p for p in serial.tools.list_ports.comports()
+            if "JLV5" in (p.name or "")
+            or "JLV5" in (p.description or "")
+            or "Jumperless" in (p.description or "")
+        ),
         key=lambda p: p.device,
     )
     return [p.device for p in ports]
@@ -65,18 +72,16 @@ class Harness:
     # Connection lifecycle                                                 #
     # ------------------------------------------------------------------ #
 
-    def close(self):
+    def close(self) -> None:
         if self._ser.is_open:
-            try:
+            with contextlib.suppress(Exception):
                 self._ser.write(self._CTRL_B)   # exit raw REPL gracefully
-            except Exception:
-                pass
             self._ser.close()
 
-    def __enter__(self):
+    def __enter__(self) -> "Harness":
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
     # ------------------------------------------------------------------ #
@@ -104,7 +109,7 @@ class Harness:
                 time.sleep(0.005)
         return drained
 
-    def _enter_raw_repl(self):
+    def _enter_raw_repl(self) -> None:
         """Interrupt any running code and enter raw REPL, draining all output."""
         self._ser.write(self._CTRL_C + self._CTRL_C)
         time.sleep(0.15)
@@ -267,7 +272,7 @@ class Harness:
         """Return the currently active slot number (0-7)."""
         return self.eval_int("CURRENT_SLOT")
 
-    def get_state(self) -> dict:  # type: ignore[type-arg]
+    def get_state(self) -> dict[str, Any]:
         """Return full board state as a dict.
 
         Tries the native get_state() JSON first via a temp file (avoids UART
@@ -287,7 +292,7 @@ class Harness:
                 "_f.close()"
             )
             stdout, _ = self.exec(code)
-            return json.loads(stdout.strip())
+            return cast(dict[str, Any], json.loads(stdout.strip()))
         except HarnessError:
             pass
 
@@ -299,12 +304,12 @@ class Harness:
             "_f.close()"
         )
         try:
-            import yaml  # type: ignore[import]
-            return yaml.safe_load(stdout.strip()) or {}
+            import yaml  # type: ignore[import-untyped]
+            return cast(dict[str, Any], yaml.safe_load(stdout.strip()) or {})
         except ImportError:
             return {"yaml": stdout.strip(), "slot": slot}
 
-    def set_state(self, state: dict, clear_first: bool = True) -> None:  # type: ignore[type-arg]
+    def set_state(self, state: dict[str, Any], clear_first: bool = True) -> None:
         """Apply a full board state from a dict."""
         json_str = json.dumps(state)
         self.exec(f"set_state({json_str!r}, clear_first={clear_first!r})")
