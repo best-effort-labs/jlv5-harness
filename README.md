@@ -153,6 +153,12 @@ stdout, stderr = h.exec("some_micropython_code()")
 result = h.eval("expression")     # → str
 ```
 
+## Hardware-in-the-loop testing
+
+The Jumperless V5's programmable crossbar makes this driver well-suited as a routing layer for hardware-in-the-loop (HIL) tests: signals between a DUT and bench instruments can be (re)connected from Python without physical rewiring, and the onboard DACs / ADCs / INA219s cover stimulus and measurement on the lower-bandwidth pins.
+
+[dwf-mcp](https://github.com/best-effort-labs/dwf-mcp) — an MCP server for the Digilent Analog Discovery 3 — uses this driver in its own hardware test suite to route AD3 pins to known loads/sources for validating scope / wavegen / logic / pattern behavior end-to-end.
+
 ## Running tests
 
 ```bash
